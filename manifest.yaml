@@ -1,0 +1,10 @@
+name: "{{APP_NAME}}"
+owner: "{{USER_EMAIL}}"
+team: "{{USER_TEAM}}"
+cost-center: "{{COST_CENTER}}"
+zone: green
+hosting: webapp
+stack:
+  - react-spa
+pattern: interactive-dashboard
+created: 2026-06-23
