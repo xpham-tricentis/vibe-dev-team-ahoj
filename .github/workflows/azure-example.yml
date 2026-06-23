@@ -1,0 +1,77 @@
+name: Azure Example Workflow
+
+on:
+  workflow_dispatch: 
+
+permissions:
+  id-token: write # Require write permission to Fetch an OIDC token.
+  contents: read
+  
+env:
+  RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+  ACR_NAME: acrvibeapp07x60szi
+  ACR_LOGIN_SERVER: acrvibeapp07x60szi.azurecr.io
+  WEB_APP_NAME: app-vibeapp07-x60szi
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+
+  build:
+    runs-on: [self-hosted, vibe-app-07]
+    environment: AzureDev
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Azure Login
+      uses: azure/login@v2
+      with:
+        client-id: ${{ secrets.AZURE_MANAGED_IDENTITY }}
+        tenant-id: ${{ vars.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        enable-AzPSSession: true
+
+    - name: Show Azure context
+      run: |
+        az account show --output table
+
+    - name: Show ACR Images [before]
+      run: |
+        az acr repository list --name ${{ env.ACR_NAME }} --output table
+        
+
+    - name: Build and push image to ACR
+      run: |
+        az acr build \
+          --registry ${{ env.ACR_NAME }} \
+          --image aci-hello:${{ github.sha }} \
+          --file Dockerfile \
+          .
+
+    - name: Show ACR Images [after]
+      run: |
+        az acr repository list --name ${{ env.ACR_NAME }} --output table
+        az acr repository show-tags --name ${{ env.ACR_NAME }} --repository aci-hello --output table
+
+
+    - name: Azure Key Vault
+      run: |
+        az keyvault secret list --vault-name ${{ secrets.AZURE_KEY_VAULT_NAME }}
+        
+        az keyvault key list --vault-name ${{ secrets.AZURE_KEY_VAULT_NAME }}
+
+        
+
+
+
+    # -------- THIS IS JUST AN EXAMPLE ---------------------
+    # -------- FIRST UPDATE DOCKERFILE AND BUILD/PACKAGE/APPLICATION
+    # - name: Deploy ACR Image to Main Web App Container
+    #   run: |
+    #     az webapp sitecontainers update --name ${{ env.WEB_APP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }} \
+    #       --container-name webapp-sidecar \
+    #       --image ${{ env.ACR_LOGIN_SERVER }}/aci-hello:${{ github.sha }} \
+    #       --target-port 80 --is-main false \
+    #       --registry-password ${{ secrets.AZURE_ACR_PASSWORD }} \
+    #       --registry-username ${{ secrets.AZURE_ACR_USERNAME }}
+          
